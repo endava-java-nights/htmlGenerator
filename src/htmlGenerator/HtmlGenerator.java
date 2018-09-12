@@ -8,8 +8,6 @@ import java.net.Socket;
 import java.util.Collection;
 import java.util.Iterator;
 
-import org.w3c.dom.html.HTMLElement;
-
 public class HtmlGenerator {
 
     public static void run(Object root) {
@@ -22,6 +20,7 @@ public class HtmlGenerator {
             html = "<h1>Error rendering model!</h1>";
         }
         
+        //open up a socket to accept html requests
         ServerSocket serverSocket = null;
         try {
             serverSocket = new ServerSocket(8080);
@@ -44,8 +43,7 @@ public class HtmlGenerator {
                 out.println("HTTP/1.1 200 OK");
                 out.println("Content-Type: text/html");
                 out.println("\r\n");
-                System.out.println("html is:" + html);
-                out.print(html);
+                out.print(html); //Include the generated html in the response
                 out.flush();
             }
         } catch (IOException e) {
@@ -57,10 +55,8 @@ public class HtmlGenerator {
 
     private static String render(Object root) throws Exception{
         StringBuilder sb = new StringBuilder();
-        Class rootClass = root.getClass();
-        Field[] fields = rootClass.getDeclaredFields();
-        System.out.println("processing " + root);
 
+        //If I have a class annotation render my children under my own tag
         HtmlElement elem = root.getClass().getAnnotation(HtmlElement.class);
         String children = renderFields(root);
         if(!elem.type().equals(HTMLType.ROOT)) {
@@ -75,14 +71,16 @@ public class HtmlGenerator {
     private static String renderFields(Object element) throws Exception{
         Field[] fields = element.getClass().getDeclaredFields();
         StringBuilder sb = new StringBuilder();
+        //Iterate over all my fields, if annotated, render them recursively
         for(Field field : fields) {
             if(field.isAnnotationPresent(HtmlElement.class)) {
                 field.setAccessible(true);
                 Object fieldInstance = field.get(element);
                 
+                // Special case for when the field is a collection 
+                // Iterate over the collection element and render them
                 if(Collection.class.isAssignableFrom(fieldInstance.getClass())){
                     Collection collection = (Collection) fieldInstance;
-                
                     Iterator iterator = collection.iterator();
                     StringBuilder children = new StringBuilder();
                     while(iterator.hasNext()) {
